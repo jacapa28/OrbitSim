@@ -26,7 +26,7 @@ def main():
 
     fig = plt.figure(figsize=(6,3), facecolor='black')
     fig.canvas.toolbar.set_message = lambda x: ""
-    o_ax = fig.add_subplot(1, 2, 1, projection='3d')
+    o_ax = fig.add_subplot(1, 3, 1, projection='3d')
     o_ax.set_aspect('equal')
     o_ax.set_facecolor('black')
     o_ax.yaxis.set_pane_color((1,1,1,0))
@@ -36,29 +36,41 @@ def main():
         spine.set_color('gray')
     o_ax.tick_params(axis='both', colors='gray')
 
-    o_ax.scatter(0, 0, 0, c='yellow', s=10000*sun.radius)
+    o_ax.scatter(0, 0, 0, c='yellow', s=100000*sun.radius)
 
-    e_ax = fig.add_subplot(1, 2, 2)
+    e_ax = fig.add_subplot(1, 3, 2)
     e_ax.set_facecolor('black')
     for spine in e_ax.spines.values():
         spine.set_color('white')
     e_ax.tick_params(axis='both', colors='white')
 
-    positions = []
-    energies = []
+    s_ax = fig.add_subplot(1, 3, 3)
+    s_ax.set_facecolor('black')
+    for spine in s_ax.spines.values():
+        spine.set_color('white')
+    s_ax.tick_params(axis='both', colors='white')
 
     t = 0
     dt = 0.001
-    while t < 10:
+    nsteps = int(10 / dt)
+    positions = np.zeros((nsteps, 3))
+    times = np.zeros(nsteps)
+    speeds = np.zeros(nsteps)
+    energies = np.zeros(nsteps)
+
+    for i in range(nsteps):
+        times[i] = t
+
         r = earth.position - sun.position
         r_mag = np.linalg.norm(r)
+        v_mag = np.linalg.norm(earth.velocity)
+        speeds[i] = v_mag
 
-        KE = 0.5*earth.mass*np.linalg.norm(earth.velocity)**2
+        KE = 0.5*earth.mass*v_mag**2
         PE = CONSTANT_OF_GRAVITY*sun.mass*earth.mass/r_mag
-        e = [t, KE - PE]
-        energies.append(e)
+        energies[i] = KE + PE
 
-        positions.append(earth.position.copy())
+        positions[i] = earth.position.copy()
 
         r_norm = r / r_mag
         acc = -CONSTANT_OF_GRAVITY*sun.mass*r_norm / (r_mag)**2
@@ -66,12 +78,12 @@ def main():
         earth.position += earth.velocity*dt
         t += dt
 
-    positions = np.array(positions)
     o_ax.plot(positions[:,0], positions[:,1], positions[:,2], c='blue')
-    o_ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=10000*earth.radius)
+    o_ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=100000*earth.radius)
 
-    energies = np.array(energies)
-    e_ax.plot(energies[:,0], energies[:,1], c='red')
+    s_ax.plot(times, speeds, c='green')
+
+    e_ax.plot(times, energies, c='red')
     plt.show()
 
 
