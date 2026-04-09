@@ -24,28 +24,42 @@ def main():
 #     l_vec = np.cross(sun.position, sun.get_momentum()) + np.cross(earth.position, earth.get_momentum())
 #     l = np.linalg.norm(l_vec)
 
-    fig = plt.figure(figsize=(3,3), facecolor='black')
+    fig = plt.figure(figsize=(6,3), facecolor='black')
     fig.canvas.toolbar.set_message = lambda x: ""
-    ax = fig.add_subplot(projection='3d')
-    ax.set_aspect('equal')
-    ax.set_facecolor('black')
-    ax.xaxis.set_pane_color((1,1,1,0))
-    ax.yaxis.set_pane_color((1,1,1,0))
-    ax.zaxis.set_pane_color((1,1,1,0))
-    for spine in ax.spines.values():
+    o_ax = fig.add_subplot(1, 2, 1, projection='3d')
+    o_ax.set_aspect('equal')
+    o_ax.set_facecolor('black')
+    o_ax.yaxis.set_pane_color((1,1,1,0))
+    o_ax.zaxis.set_pane_color((1,1,1,0))
+    o_ax.xaxis.set_pane_color((1,1,1,0))
+    for spine in o_ax.spines.values():
         spine.set_color('gray')
-    ax.tick_params(axis='both', colors='gray')
+    o_ax.tick_params(axis='both', colors='gray')
 
-    ax.scatter(0, 0, 0, c='yellow', s=10000*sun.radius)
+    o_ax.scatter(0, 0, 0, c='yellow', s=10000*sun.radius)
+
+    e_ax = fig.add_subplot(1, 2, 2)
+    e_ax.set_facecolor('black')
+    for spine in e_ax.spines.values():
+        spine.set_color('white')
+    e_ax.tick_params(axis='both', colors='white')
 
     positions = []
+    energies = []
 
     t = 0
     dt = 0.001
-    while t < 100:
-        positions.append(earth.position.copy())
+    while t < 10:
         r = earth.position - sun.position
         r_mag = np.linalg.norm(r)
+
+        KE = 0.5*earth.mass*np.linalg.norm(earth.velocity)**2
+        PE = CONSTANT_OF_GRAVITY*sun.mass*earth.mass/r_mag
+        e = [t, KE - PE]
+        energies.append(e)
+
+        positions.append(earth.position.copy())
+
         r_norm = r / r_mag
         acc = -CONSTANT_OF_GRAVITY*sun.mass*r_norm / (r_mag)**2
         earth.velocity += acc*dt
@@ -53,8 +67,11 @@ def main():
         t += dt
 
     positions = np.array(positions)
-    ax.plot(positions[:,0], positions[:,1], positions[:,2], c='blue')
-    ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=10000*earth.radius)
+    o_ax.plot(positions[:,0], positions[:,1], positions[:,2], c='blue')
+    o_ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=10000*earth.radius)
+
+    energies = np.array(energies)
+    e_ax.plot(energies[:,0], energies[:,1], c='red')
     plt.show()
 
 
