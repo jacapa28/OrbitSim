@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
-CONSTANT_OF_GRAVITY = 6.67e-11
+CONSTANT_OF_GRAVITY = 4*((math.pi)**2)
 
 class Object:
     def __init__(self, mass: float, position: np.ndarray, velocity: np.ndarray, radius: float):
@@ -15,8 +16,8 @@ class Object:
     
 
 def main():
-    sun = Object(1.9891e30, np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]), 695700.0)
-    earth = Object(5.972e24, np.array([0.0, 152e9, 0.0]), np.array([-29290, 0.0, 0.0]), 6378.137)
+    sun = Object(1, np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]), 0.00465)
+    earth = Object(3.003e-6, np.array([0.0, 1, 0.0]), np.array([-2*(math.pi), 0.0, 0.0]), 0.000043)
 
 #     mu = sun.mass*earth.mass/(sun.mass+earth.mass)
 
@@ -35,31 +36,26 @@ def main():
         spine.set_color('gray')
     ax.tick_params(axis='both', colors='gray')
 
-    ax.scatter(0, 0, 0, c='yellow', s=1000)
+    ax.scatter(0, 0, 0, c='yellow', s=10000*sun.radius)
 
     positions = []
 
     t = 0
-    dt = 500
-    while t < 3.154e7:
+    dt = 0.001
+    while t < 100:
         positions.append(earth.position.copy())
         r = earth.position - sun.position
-
-        r_norm = (1 / np.linalg.norm(r)) * r
-
-        acc = -CONSTANT_OF_GRAVITY*sun.mass*r_norm / (np.linalg.norm(r))**2
+        r_mag = np.linalg.norm(r)
+        r_norm = r / r_mag
+        acc = -CONSTANT_OF_GRAVITY*sun.mass*r_norm / (r_mag)**2
         earth.velocity += acc*dt
         earth.position += earth.velocity*dt
         t += dt
 
-    peri = int(len(positions) / 2)
     positions = np.array(positions)
     ax.plot(positions[:,0], positions[:,1], positions[:,2], c='blue')
-    ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=100)
-    print(f"aphelion: {int(positions[0,1]*-1000)} kms")
-    print(f"perihelion: {int(positions[peri,1]*-1000)} kms")
+    ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=10000*earth.radius)
     plt.show()
-
 
 
 if __name__ == "__main__":
