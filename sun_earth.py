@@ -15,9 +15,70 @@ class Object:
         return self.mass * self.velocity
     
 
+def make_state(sun: Object, earth: Object):
+    return np.concatenate([
+        sun.position,
+        sun.velocity,
+        earth.position, 
+        earth.velocity
+    ])
+
+def update_state(state: np.ndarray, sun: Object, earth: Object):
+    sun.position = state[0:3].copy()
+    sun.velocity = state[3:6].copy()
+    earth.position = state[6:9].copy()
+    earth.velocity = state[9:12].copy()
+
+
+def make_derivatives_state(state: np.ndarray, sun: Object, earth: Object):
+    sun_pos = state[0:3]
+    sun_vel = state[3:6]
+    earth_pos = state[6:9]
+    earth_vel = state[9:12]
+
+    r = earth_pos - sun_pos
+    r_mag = np.linalg.norm(r)
+
+    sun_acc = CONSTANT_OF_GRAVITY*earth.mass*r / (r_mag)**3
+    earth_acc = -CONSTANT_OF_GRAVITY*sun.mass*r / (r_mag)**3
+
+    return np.concatenate([
+        sun_vel,
+        sun_acc,
+        earth_vel,
+        earth_acc
+    ])
+
+
+def RK4(state: np.ndarray, sun: Object, earth: Object, dt: float):
+    k1 = make_derivatives_state(state, sun, earth)
+    k2 = make_derivatives_state(state + 0.5*dt*k1, sun, earth)
+    k3 = make_derivatives_state(state + 0.5*dt*k2, sun, earth)
+    k4 = make_derivatives_state(state + dt*k3, sun, earth)
+
+    return state + (dt / 6) * (k1 + 2*k2 + 2*k3 + k4)
+
+
+def calculate_energy(sun: Object, earth: Object):
+    r_mag = np.linalg.norm(earth.position - sun.position)
+    KE_sun = 0.5*sun.mass*np.linalg.norm(sun.velocity)**2
+    KE_earth = 0.5*earth.mass*np.linalg.norm(earth.velocity)**2
+    PE = -CONSTANT_OF_GRAVITY*sun.mass*earth.mass/r_mag
+    return KE_sun + KE_earth + PE
+
+
 def main():
-    sun = Object(1, np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]), 0.00465)
-    earth = Object(3.003e-6, np.array([0.0, 1, 0.0]), np.array([-2*(math.pi), 0.0, 0.0]), 0.000043)
+    sun_mass = 1
+    earth_mass = 3.003e-6
+    M = sun_mass + earth_mass
+    distance = 1
+    sun_pos = -earth_mass*distance/M
+    earth_pos = sun_mass*distance/M
+    earth_vel = np.array([0.0, 2*math.pi, 0.0])
+    sun_vel = -earth_mass/sun_mass * earth_vel
+
+    sun = Object(sun_mass, np.array([sun_pos, 0.0, 0.0]), sun_vel, 0.00465)
+    earth = Object(earth_mass, np.array([earth_pos, 0.0, 0.0]), earth_vel, 0.000043)
 
 #     mu = sun.mass*earth.mass/(sun.mass+earth.mass)
 
@@ -36,8 +97,6 @@ def main():
         spine.set_color('gray')
     o_ax.tick_params(axis='both', colors='gray')
 
-    o_ax.scatter(0, 0, 0, c='yellow', s=100000*sun.radius)
-
     e_ax = fig.add_subplot(1, 3, 2)
     e_ax.set_facecolor('black')
     for spine in e_ax.spines.values():
@@ -53,37 +112,41 @@ def main():
     t = 0
     dt = 0.001
     nsteps = int(10 / dt)
-    positions = np.zeros((nsteps, 3))
-    times = np.zeros(nsteps)
-    speeds = np.zeros(nsteps)
-    energies = np.zeros(nsteps)
+    earth_positions = np.zeros((nsteps+1, 3))
+    sun_positions = np.zeros((nsteps+1, 3))
+    times = np.zeros(nsteps+1)
+    speeds = np.zeros(nsteps+1)
+    energies = np.zeros(nsteps+1)
 
-    for i in range(nsteps):
+    times[0] = t
+    earth_positions[0] = earth.position.copy()
+    sun_positions[0] = sun.position.copy()
+    speeds[0] = np.linalg.norm(earth.velocity)
+    energies[0] = calculate_energy(sun, earth)
+
+    state = make_state(sun, earth)
+
+    for i in range(1, nsteps+1):
+        t += dt
         times[i] = t
 
-        r = earth.position - sun.position
-        r_mag = np.linalg.norm(r)
-        v_mag = np.linalg.norm(earth.velocity)
-        speeds[i] = v_mag
+        state = RK4(state, sun, earth, dt)
+        update_state(state, sun, earth)
 
-        KE = 0.5*earth.mass*v_mag**2
-        PE = CONSTANT_OF_GRAVITY*sun.mass*earth.mass/r_mag
-        energies[i] = KE + PE
+        earth_positions[i] = earth.position.copy()
+        sun_positions[i] = sun.position.copy()
+        speeds[i] = np.linalg.norm(earth.velocity)
+        energies[i] = calculate_energy(sun, earth)
 
-        positions[i] = earth.position.copy()
 
-        r_norm = r / r_mag
-        acc = -CONSTANT_OF_GRAVITY*sun.mass*r_norm / (r_mag)**2
-        earth.velocity += acc*dt
-        earth.position += earth.velocity*dt
-        t += dt
-
-    o_ax.plot(positions[:,0], positions[:,1], positions[:,2], c='blue')
-    o_ax.scatter(positions[-1,0], positions[-1,1], positions[:,2], c='blue', s=100000*earth.radius)
+    o_ax.plot(earth_positions[:,0], earth_positions[:,1], earth_positions[:,2], c='blue')
+    o_ax.scatter(earth_positions[-1,0], earth_positions[-1,1], earth_positions[-1,2], c='blue', s=100000*earth.radius)
+    o_ax.plot(sun_positions[:,0], sun_positions[:,1], sun_positions[:,2], c='yellow')
+    o_ax.scatter(sun_positions[-1,0], sun_positions[-1,1], sun_positions[-1,2], c='yellow', s=100000*sun.radius)
 
     s_ax.plot(times, speeds, c='green')
 
-    e_ax.plot(times, energies, c='red')
+    e_ax.plot(times, energies - energies[0], c='red')
     plt.show()
 
 
