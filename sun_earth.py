@@ -102,6 +102,7 @@ def main():
     for spine in e_ax.spines.values():
         spine.set_color('white')
     e_ax.tick_params(axis='both', colors='white')
+    e_ax.set_ylim([-0.001,0.001])
 
     s_ax = fig.add_subplot(1, 3, 3)
     s_ax.set_facecolor('black')
